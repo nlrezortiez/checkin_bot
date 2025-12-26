@@ -16,7 +16,7 @@ def setup_scheduler(s: AsyncIOScheduler, *, bot, db, config) -> None:
     # Сообщение о закрытии утреннего доклада
     s.add_job(
         notify_admin_cadets_close,
-        CronTrigger(hour=7, minute=31, timezone=TZ),
+        CronTrigger(hour=7, minute=30, timezone=TZ),
         args=[bot, db, config],
         id="admins_menu_after_morning_close",
         replace_existing=True,
@@ -25,7 +25,7 @@ def setup_scheduler(s: AsyncIOScheduler, *, bot, db, config) -> None:
     # Отчет по утреннему докладу
     s.add_job(
         send_reports,
-        CronTrigger(hour=7, minute=35, timezone=TZ),
+        CronTrigger(hour=7, minute=31, timezone=TZ),
         args=[bot, db, config, SLOT_MORNING],
         id="reports_morning",
         replace_existing=True,
@@ -43,7 +43,7 @@ def setup_scheduler(s: AsyncIOScheduler, *, bot, db, config) -> None:
     # Сообщение о закрытии вечернего доклада
     s.add_job(
         notify_admin_cadets_close,
-        CronTrigger(hour=22, minute=1, timezone=TZ),
+        CronTrigger(hour=22, minute=00, timezone=TZ),
         args=[bot, db, config],
         id="admins_menu_after_evening_close",
         replace_existing=True,
@@ -52,7 +52,7 @@ def setup_scheduler(s: AsyncIOScheduler, *, bot, db, config) -> None:
     # Отчет по вечернему докладу
     s.add_job(
         send_reports,
-        CronTrigger(hour=22, minute=5, timezone=TZ),
+        CronTrigger(hour=22, minute=1, timezone=TZ),
         args=[bot, db, config, SLOT_EVENING],
         id="reports_evening",
         replace_existing=True,

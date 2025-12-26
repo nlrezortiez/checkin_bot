@@ -22,6 +22,14 @@ def is_admin_cadet(user_id: int, admin_ids: set[int], officer_ids: set[int]) -> 
     return (user_id in admin_ids) and (user_id not in officer_ids)
 
 
+def format_contact(username: str | None, phone: str | None) -> str:
+    if phone:
+        return phone
+    if username:
+        return f"@{username}"
+    return ""
+
+
 @router.message(F.text == BTN_NOT_REPORTED)
 async def not_reported(message: Message, db, config):
     user_id = message.from_user.id
@@ -48,8 +56,9 @@ async def not_reported(message: Message, db, config):
         return
 
     lines = ["Не доложили", "", f"{group_code} учебная группа:"]
-    for i, name in enumerate(missing, start=1):
-        lines.append(f"{i}. {name}")
+    for i, (name, username, phone) in enumerate(missing, start=1):
+        c = format_contact(username, phone)
+        lines.append(f"{i}. {name}" + (f" ({c})" if c else ""))
     await message.answer("\n".join(lines))
 
 
@@ -75,11 +84,43 @@ async def admin_my_group_stats(message: Message, db, config):
         return
 
     group_code = cadet["group_code"]
-    n = await db.count_registered_in_group(group_code)
-    await message.answer(
-        "Статистика: моя группа\n\n"
-        f"{group_code}: {n}"
-    )
+
+    members = await db.list_registered_in_group(group_code)
+    total = len(members)
+
+    lines = [
+        "Статистика: моя группа",
+        "",
+        f"{group_code}: {total}",
+    ]
+
+    if total == 0:
+        await message.answer("\n".join(lines))
+        return
+
+    lines.append("")
+    lines.append("Список зарегистрированных:")
+
+    for i, (name, username, phone) in enumerate(members, start=1):
+        c = format_contact(username, phone)
+        lines.append(f"{i}. {name}" + (f" ({c})" if c else ""))
+
+    # Telegram message limit ~4096 chars: отправляем частями
+    chunk: list[str] = []
+    chunk_len = 0
+    max_len = 3500  # запас под служебные символы
+
+    for line in lines:
+        add_len = len(line) + 1
+        if chunk and (chunk_len + add_len > max_len):
+            await message.answer("\n".join(chunk))
+            chunk = []
+            chunk_len = 0
+        chunk.append(line)
+        chunk_len += add_len
+
+    if chunk:
+        await message.answer("\n".join(chunk))
 
 
 @router.message(F.text == BTN_PICK_GROUP)

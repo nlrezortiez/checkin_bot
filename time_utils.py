@@ -17,16 +17,16 @@ class SlotConfig:
 
 MORNING = SlotConfig(
     slot=SLOT_MORNING,
-    start=time(7, 00),
-    deadline=time(7, 30),
-    close=time(7, 30),
+    start=time(0, 6),
+    deadline=time(0, 8),
+    close=time(0, 8),
 )
 
 EVENING = SlotConfig(
     slot=SLOT_EVENING,
-    start=time(21, 30),
-    deadline=time(22, 00),
-    close=time(22, 00),
+    start=time(0, 10),
+    deadline=time(0, 13),
+    close=time(0, 13),
 )
 
 def now_msk() -> datetime:
