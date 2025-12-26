@@ -47,11 +47,6 @@ def is_admin_cadet(user_id: int, admin_ids: set[int], officer_ids: set[int]) -> 
 async def cmd_start(message: Message, state: FSMContext, db, config):
     user_id = message.from_user.id
     officer = is_officer(user_id, config.officer_ids)
-    admin_cadet = is_admin_cadet(user_id, config.admin_ids, config.officer_ids)
-
-    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer)
-    if menu:
-        await message.answer("Меню доступно.", reply_markup=menu)
 
     cadet = await db.get_cadet(user_id)
     if cadet:
@@ -67,7 +62,6 @@ async def cmd_start(message: Message, state: FSMContext, db, config):
     await state.set_state(Registration.choose_group)
 
     if officer:
-        # Офицеру НЕ предлагаем список групп; только «Офицер»
         await message.answer(
             "Подтвердите регистрацию как офицер:",
             reply_markup=officer_only_kb(),
