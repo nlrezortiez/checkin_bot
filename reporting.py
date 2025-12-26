@@ -2,7 +2,7 @@ from collections import defaultdict
 
 def build_missing_report_all(rows: list[tuple[str, str]]) -> str:
     if not rows:
-        return "Неотметившиеся курсанты\n\nВсе отметились.\n\nВсего неотметившихся: 0"
+        return "Все курсанты доложили."
 
     groups = defaultdict(list)
     for group_code, full_name in rows:

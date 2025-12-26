@@ -12,6 +12,7 @@ from keyboards import (
     OFFICERS_GROUP_CODE,
     OFFICERS_GROUP_LABEL,
 )
+from time_utils import current_slot
 
 router = Router()
 
@@ -82,7 +83,9 @@ async def reg_restart(cb: CallbackQuery, state: FSMContext, config):
     await cb.answer()
     await state.set_state(Registration.choose_group)
 
-    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer)
+    slot = current_slot(now_msk())
+    show_not_reported = (slot is not None) and admin_cadet
+    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer, show_not_reported=show_not_reported)
     if menu:
         await cb.message.answer("Меню доступно.", reply_markup=menu)
 

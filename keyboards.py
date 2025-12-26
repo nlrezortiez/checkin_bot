@@ -13,7 +13,7 @@ CADET_GROUPS: list[str] = ["841/11", "841/12", "841/13", "842/11", "842/12", "84
 BTN_MY_GROUP = "Статистика: моя группа"
 BTN_PICK_GROUP = "Зарегистрировано: выбрать группу"
 BTN_COURSE = "Зарегистрировано: весь курс"
-
+BTN_NOT_REPORTED = "Не доложили"
 BTN_CHECKIN = "✅ Отметиться"
 
 
@@ -59,7 +59,7 @@ def registered_kb_inline() -> InlineKeyboardMarkup:
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool) -> ReplyKeyboardMarkup | None:
+def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool, show_not_reported: bool) -> ReplyKeyboardMarkup | None:
     if is_officer:
         rows = [
             [KeyboardButton(text=BTN_PICK_GROUP)],
@@ -70,12 +70,13 @@ def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool) -> ReplyKeyboardMark
             [KeyboardButton(text=BTN_CHECKIN)],
             [KeyboardButton(text=BTN_MY_GROUP)],
         ]
-    elif not is_officer and not is_admin_cadet:
+        if show_not_reported:
+            rows.append([KeyboardButton(text=BTN_NOT_REPORTED)])
+    else:
         rows = [
             [KeyboardButton(text=BTN_CHECKIN)],
         ]
-    else:
-        return None
+
 
     return ReplyKeyboardMarkup(
         keyboard=rows,
