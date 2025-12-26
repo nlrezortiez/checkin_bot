@@ -10,17 +10,15 @@ OFFICERS_GROUP_LABEL = "Офицер"
 
 CADET_GROUPS: list[str] = ["841/11", "841/12", "841/13", "842/11", "842/12", "843/11", "843/12"]
 
-BTN_MY_GROUP = "Зарегистрировано: моя группа"
+BTN_MY_GROUP = "Статистика: моя группа"
 BTN_PICK_GROUP = "Зарегистрировано: выбрать группу"
 BTN_COURSE = "Зарегистрировано: весь курс"
 BTN_NOT_REPORTED = "Не доложили"
 BTN_CHECKIN = "✅ Отметиться"
+BTN_LAST_REPORT = "Статистика последнего доклада"
 
 
 def cadet_groups_kb() -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура выбора учебной группы (только для курсантов).
-    """
     rows: list[list[InlineKeyboardButton]] = []
     row: list[InlineKeyboardButton] = []
 
@@ -36,9 +34,6 @@ def cadet_groups_kb() -> InlineKeyboardMarkup:
 
 
 def officer_only_kb() -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура для регистрации офицера: единственная опция «Офицер».
-    """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=OFFICERS_GROUP_LABEL, callback_data=f"group:{OFFICERS_GROUP_CODE}")]
@@ -47,9 +42,6 @@ def officer_only_kb() -> InlineKeyboardMarkup:
 
 
 def registered_kb_inline() -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура для зарегистрированного пользователя.
-    """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Перерегистрироваться", callback_data="reg:restart")]
@@ -60,12 +52,14 @@ def registered_kb_inline() -> InlineKeyboardMarkup:
 def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool, show_not_reported: bool) -> ReplyKeyboardMarkup | None:
     if is_officer:
         rows = [
+            [KeyboardButton(text=BTN_LAST_REPORT)],
             [KeyboardButton(text=BTN_PICK_GROUP)],
             [KeyboardButton(text=BTN_COURSE)],
         ]
     elif is_admin_cadet:
         rows = [
             [KeyboardButton(text=BTN_CHECKIN)],
+            [KeyboardButton(text=BTN_LAST_REPORT)],
             [KeyboardButton(text=BTN_MY_GROUP)],
         ]
         if show_not_reported:
@@ -75,7 +69,6 @@ def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool, show_not_reported: b
             [KeyboardButton(text=BTN_CHECKIN)],
         ]
 
-
     return ReplyKeyboardMarkup(
         keyboard=rows,
         resize_keyboard=True,
@@ -84,12 +77,7 @@ def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool, show_not_reported: b
     )
 
 
-
 def officer_groups_kb() -> InlineKeyboardMarkup:
-    """
-    Inline-клавиатура выбора учебной группы для офицеров (погруппно).
-    Офицерскую группу не показываем.
-    """
     rows: list[list[InlineKeyboardButton]] = []
     row: list[InlineKeyboardButton] = []
 

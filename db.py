@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS cadets (
   tg_user_id INTEGER PRIMARY KEY,
   group_code TEXT NOT NULL,
   full_name  TEXT NOT NULL,
-  username   TEXT,             -- @username without '@', may be NULL
-  phone      TEXT,             -- phone number, may be NULL
+  username   TEXT,
+  phone      TEXT,
   created_at TEXT NOT NULL,
   is_active  INTEGER NOT NULL DEFAULT 1
 );
@@ -79,6 +79,17 @@ class Database:
             )
             await db.commit()
 
+    async def add_checkin(self, tg_user_id: int, date_str: str, slot: str) -> bool:
+        created_at = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self._db_path) as db:
+            cur = await db.execute(
+                "INSERT OR IGNORE INTO checkins(tg_user_id, date, slot, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (tg_user_id, date_str, slot, created_at),
+            )
+            await db.commit()
+            return cur.rowcount == 1
+
     async def count_registered_in_group(self, group_code: str) -> int:
         async with aiosqlite.connect(self._db_path) as db:
             cur = await db.execute(
@@ -110,16 +121,59 @@ class Database:
             rows = await cur.fetchall()
             return [(r[0], int(r[1])) for r in rows]
 
-    async def add_checkin(self, tg_user_id: int, date_str: str, slot: str) -> bool:
-        created_at = datetime.now(timezone.utc).isoformat()
+    async def list_registered_in_group(self, group_code: str) -> list[tuple[str, str | None, str | None]]:
         async with aiosqlite.connect(self._db_path) as db:
             cur = await db.execute(
-                "INSERT OR IGNORE INTO checkins(tg_user_id, date, slot, created_at) "
-                "VALUES (?, ?, ?, ?)",
-                (tg_user_id, date_str, slot, created_at),
+                "SELECT full_name, username, phone "
+                "FROM cadets "
+                "WHERE is_active = 1 AND group_code = ? "
+                "ORDER BY full_name",
+                (group_code,),
             )
-            await db.commit()
-            return cur.rowcount == 1
+            rows = await cur.fetchall()
+            return [(r[0], r[1], r[2]) for r in rows]
+
+    async def count_group_total(self, group_code: str) -> int:
+        async with aiosqlite.connect(self._db_path) as db:
+            cur = await db.execute(
+                "SELECT COUNT(*) FROM cadets WHERE is_active = 1 AND group_code = ?",
+                (group_code,),
+            )
+            (n,) = await cur.fetchone()
+            return int(n)
+
+    async def count_group_checked(self, group_code: str, date_str: str, slot: str) -> int:
+        async with aiosqlite.connect(self._db_path) as db:
+            cur = await db.execute(
+                "SELECT COUNT(*) "
+                "FROM cadets c "
+                "JOIN checkins ch ON ch.tg_user_id = c.tg_user_id "
+                "WHERE c.is_active = 1 AND c.group_code = ? AND ch.date = ? AND ch.slot = ?",
+                (group_code, date_str, slot),
+            )
+            (n,) = await cur.fetchone()
+            return int(n)
+
+    async def count_course_total(self, *, exclude_group_code: str) -> int:
+        async with aiosqlite.connect(self._db_path) as db:
+            cur = await db.execute(
+                "SELECT COUNT(*) FROM cadets WHERE is_active = 1 AND group_code <> ?",
+                (exclude_group_code,),
+            )
+            (n,) = await cur.fetchone()
+            return int(n)
+
+    async def count_course_checked(self, *, exclude_group_code: str, date_str: str, slot: str) -> int:
+        async with aiosqlite.connect(self._db_path) as db:
+            cur = await db.execute(
+                "SELECT COUNT(*) "
+                "FROM cadets c "
+                "JOIN checkins ch ON ch.tg_user_id = c.tg_user_id "
+                "WHERE c.is_active = 1 AND c.group_code <> ? AND ch.date = ? AND ch.slot = ?",
+                (exclude_group_code, date_str, slot),
+            )
+            (n,) = await cur.fetchone()
+            return int(n)
 
     async def missing_by_group(self, group_code: str, date_str: str, slot: str) -> list[tuple[str, str | None, str | None]]:
         async with aiosqlite.connect(self._db_path) as db:
@@ -150,19 +204,3 @@ class Database:
             )
             rows = await cur.fetchall()
             return [(r[0], r[1], r[2], r[3]) for r in rows]
-
-    async def list_registered_in_group(self, group_code: str) -> list[tuple[str, str | None, str | None]]:
-        """
-        Список зарегистрированных курсантов в группе:
-        (full_name, username, phone), сортировка по full_name.
-        """
-        async with aiosqlite.connect(self._db_path) as db:
-            cur = await db.execute(
-                "SELECT full_name, username, phone "
-                "FROM cadets "
-                "WHERE is_active = 1 AND group_code = ? "
-                "ORDER BY full_name",
-                (group_code,),
-            )
-            rows = await cur.fetchall()
-            return [(r[0], r[1], r[2]) for r in rows]

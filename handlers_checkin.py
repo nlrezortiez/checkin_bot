@@ -30,8 +30,6 @@ async def do_checkin(message: Message, db):
 
     cfg = slot_config(slot)
     if inserted:
-        await message.answer(
-            f"Доклад принят. Окно: {cfg.start.strftime('%H:%M')}–{cfg.close.strftime('%H:%M')} (МСК)."
-        )
+        await message.answer("Доклад принят.")
     else:
         await message.answer("Доклад уже был принят.")
