@@ -3,7 +3,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 from keyboards import OFFICERS_GROUP_CODE, role_menu_kb
-from time_utils import now_msk, date_str_msk, slot_config, current_slot
+from time_utils import current_slot, now_msk, date_str_msk, slot_config
 from reporting import build_missing_report_all, build_missing_report_one_group
 
 async def _safe_send(bot: Bot, chat_id: int, text: str, reply_markup=None) -> None:
@@ -34,10 +34,12 @@ async def notify_admin_cadets_start(bot: Bot, db, config, slot: str) -> None:
         if cadet["group_code"] == OFFICERS_GROUP_CODE:
             continue
 
+
+        active = (current_slot(now_msk()) == slot)
         menu = role_menu_kb(
             is_officer=False,
             is_admin_cadet=True,
-            show_not_reported=True,   # ВАЖНО: включаем кнопку в окне
+            show_not_reported=active,
         )
 
         text = (
@@ -78,8 +80,8 @@ async def send_reports(bot: Bot, db, config, slot: str) -> None:
         report = build_missing_report_all(rows)
         header = f"Отчёт ({date_str})"
         text = f"{header}\n\n{report}"
-        for оф_id in config.officer_ids:
-            await _safe_send(bot, оф_id, text)
+        for officer_id in config.officer_ids:
+            await _safe_send(bot, officer_id, text)
             await asyncio.sleep(0.05)
 
     # 2) Админам-курсантам: отчёт только по своей группе

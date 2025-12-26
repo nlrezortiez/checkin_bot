@@ -1,6 +1,5 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from zoneinfo import ZoneInfo
 
 from time_utils import TZ, SLOT_MORNING, SLOT_EVENING
 from scheduler_jobs import notify_admin_cadets_start, notify_admin_cadets_close, send_reports
@@ -17,7 +16,7 @@ def setup_scheduler(s: AsyncIOScheduler, *, bot, db, config) -> None:
     # Сообщение о закрытии утреннего доклада
     s.add_job(
         notify_admin_cadets_close,
-        CronTrigger(hour=7, minute=16, timezone=TZ),
+        CronTrigger(hour=7, minute=31, timezone=TZ),
         args=[bot, db, config],
         id="admins_menu_after_morning_close",
         replace_existing=True,

@@ -12,7 +12,7 @@ from keyboards import (
     OFFICERS_GROUP_CODE,
     OFFICERS_GROUP_LABEL,
 )
-from time_utils import current_slot
+from time_utils import current_slot, now_msk
 
 router = Router()
 
@@ -44,10 +44,38 @@ def is_admin_cadet(user_id: int, admin_ids: set[int], officer_ids: set[int]) -> 
     return (user_id in admin_ids) and (user_id not in officer_ids)
 
 
+def build_menu(*, user_id: int, config) -> tuple[bool, bool, bool]:
+    """
+    Возвращает (officer, admin_cadet, show_not_reported).
+    show_not_reported True только для админа-курсанта и только в активное окно доклада.
+    """
+    officer = is_officer(user_id, config.officer_ids)
+    admin_cadet = is_admin_cadet(user_id, config.admin_ids, config.officer_ids)
+
+    slot = current_slot(now_msk())
+    show_not_reported = (slot is not None) and admin_cadet
+    return officer, admin_cadet, show_not_reported
+
+
+async def send_role_menu(message: Message, *, officer: bool, admin_cadet: bool, show_not_reported: bool) -> None:
+    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer, show_not_reported=show_not_reported)
+    if menu:
+        await message.answer("Меню доступно.", reply_markup=menu)
+
+
+async def send_role_menu_cb(cb: CallbackQuery, *, officer: bool, admin_cadet: bool, show_not_reported: bool) -> None:
+    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer, show_not_reported=show_not_reported)
+    if menu:
+        await cb.message.answer("Меню доступно.", reply_markup=menu)
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, db, config):
     user_id = message.from_user.id
-    officer = is_officer(user_id, config.officer_ids)
+    officer, admin_cadet, show_not_reported = build_menu(user_id=user_id, config=config)
+
+    # Меню показываем всегда (для офицеров/админов/курсантов)
+    await send_role_menu(message, officer=officer, admin_cadet=admin_cadet, show_not_reported=show_not_reported)
 
     cadet = await db.get_cadet(user_id)
     if cadet:
@@ -77,17 +105,13 @@ async def cmd_start(message: Message, state: FSMContext, db, config):
 @router.callback_query(F.data == "reg:restart")
 async def reg_restart(cb: CallbackQuery, state: FSMContext, config):
     user_id = cb.from_user.id
-    officer = is_officer(user_id, config.officer_ids)
-    admin_cadet = is_admin_cadet(user_id, config.admin_ids, config.officer_ids)
+    officer, admin_cadet, show_not_reported = build_menu(user_id=user_id, config=config)
 
     await cb.answer()
     await state.set_state(Registration.choose_group)
 
-    slot = current_slot(now_msk())
-    show_not_reported = (slot is not None) and admin_cadet
-    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer, show_not_reported=show_not_reported)
-    if menu:
-        await cb.message.answer("Меню доступно.", reply_markup=menu)
+    # Меню показываем всегда
+    await send_role_menu_cb(cb, officer=officer, admin_cadet=admin_cadet, show_not_reported=show_not_reported)
 
     if officer:
         await cb.message.edit_text(
@@ -154,20 +178,27 @@ async def enter_name(message: Message, state: FSMContext, db, config):
     # Дублирующая серверная защита:
     if not officer and group_code == OFFICERS_GROUP_CODE:
         await state.set_state(Registration.choose_group)
-        await message.answer("Регистрация как офицер запрещена. Выберите учебную группу:", reply_markup=cadet_groups_kb())
+        await message.answer(
+            "Регистрация как офицер запрещена. Выберите учебную группу:",
+            reply_markup=cadet_groups_kb(),
+        )
         return
 
     if officer and group_code != OFFICERS_GROUP_CODE:
         await state.set_state(Registration.choose_group)
-        await message.answer("Офицер может зарегистрироваться только как офицер.", reply_markup=officer_only_kb())
+        await message.answer(
+            "Офицер может зарегистрироваться только как офицер.",
+            reply_markup=officer_only_kb(),
+        )
         return
 
     await db.upsert_cadet(tg_user_id=user_id, group_code=group_code, full_name=full_name)
     await state.clear()
 
-    menu = role_menu_kb(is_admin_cadet=admin_cadet, is_officer=officer)
-    if menu:
-        await message.answer("Меню доступно.", reply_markup=menu)
+    # После регистрации обновляем меню (и кнопку "Не доложили", если окно активно)
+    slot = current_slot(now_msk())
+    show_not_reported = (slot is not None) and admin_cadet
+    await send_role_menu(message, officer=officer, admin_cadet=admin_cadet, show_not_reported=show_not_reported)
 
     grp_label = group_label_from_code(group_code)
     await message.answer(

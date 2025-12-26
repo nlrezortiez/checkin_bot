@@ -57,8 +57,6 @@ def registered_kb_inline() -> InlineKeyboardMarkup:
     )
 
 
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
 def role_menu_kb(*, is_officer: bool, is_admin_cadet: bool, show_not_reported: bool) -> ReplyKeyboardMarkup | None:
     if is_officer:
         rows = [
